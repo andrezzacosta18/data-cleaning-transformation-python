@@ -227,10 +227,10 @@ python src/main.py
 
 | Name | Role |
 |------|------|
-| Andreza Costa | Data Analyst |
-| Team Member | Data Analyst |
-| Team Member | Data Analyst |
-| Team Member | Data Analyst |
+| Andreza Silva | Data Analyst |
+| Ilana Freire | Data Analyst |
+| Bruno Moller| Data Analyst |
+
 
 ---
 
