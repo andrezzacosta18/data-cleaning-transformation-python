@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pandas as pd
 
-df = pd.read_csv("data-cleaning-transformation-python/data-cleaning-project/data/raw/netflix_titles.csv")
 
 # ==========================================================
 # PATHS
@@ -86,7 +85,6 @@ def analyze_missing_values(df):
     df.info()
 
     missing_values = df.isnull().sum()
-
     missing_percentage = df.isnull().mean() * 100
 
     missing_summary = pd.DataFrame({
@@ -95,21 +93,24 @@ def analyze_missing_values(df):
     })
 
     missing_columns = missing_summary[
-    missing_summary["Missing Values"] > 0
-]
+        missing_summary["Missing Values"] > 0
+    ]
 
-    print("\nSummary:\n")
-    print(f"{missing_columns}\n")
+    print("\nColumns with missing values:\n")
+    print(missing_columns)
 
-    # ==========================================================
+    print("\nChoose a column to clean:\n")
 
-""" 
-    opc = int(input("Enter the column you wish to change. "))
+    print("1 - director")
+    print("2 - cast")
+    print("3 - country")
+    print("4 - date_added")
+    print("5 - rating")
+    print("6 - duration")
+    print("0 - Return")
 
-    if opc == 1: """
-        
+    option = input("\nChoose an option: ")
 
-analyze_missing_values(df)
 
 # ==========================================================
 # OPTION 3
@@ -197,7 +198,6 @@ def display_cleaning_report(cleaning_report):
 
 def save_clean_dataset(df):
 
-    # Save the cleaned DataFrame as a CSV file
     df.to_csv(OUTPUT_PATH, index=False)
 
     print("=" * 70)
@@ -205,9 +205,8 @@ def save_clean_dataset(df):
     print("=" * 70)
 
     print("\nDataset saved successfully!")
-
-    # Display the location where the file was saved
     print(f"\nSaved to:\n{OUTPUT_PATH}")
+
 
 # ==========================================================
 # MAIN
@@ -234,83 +233,67 @@ def cleaning(df):
         if op == 1:
 
             clear_screen()
-
             display_dataset_info(df)
-
             pause()
 
         elif op == 2:
 
             clear_screen()
-
             analyze_missing_values(df)
-
             pause()
 
         elif op == 3:
 
             clear_screen()
-
+            analyze_duplicates(df)
             pause()
 
         elif op == 4:
 
             clear_screen()
-
-            analyze_duplicates(df)
-
+            df = remove_duplicates(df)
             pause()
 
         elif op == 5:
 
             clear_screen()
-
-            df = remove_duplicates(df)
-
+            df = standardize_text(df)
             pause()
 
         elif op == 6:
 
             clear_screen()
-
-            df = standardize_text(df)
-
+            df = convert_numeric_columns(df)
             pause()
 
         elif op == 7:
 
             clear_screen()
-
-            df = convert_numeric_columns(df)
-
+            display_cleaning_report(cleaning_report)
             pause()
 
         elif op == 8:
 
             clear_screen()
-
-            display_cleaning_report(cleaning_report)
-
-            pause()
-
-        elif op == 9:
-
-            clear_screen()
-
             save_clean_dataset(df)
-
             pause()
 
         elif op == 0:
 
             clear_screen()
-
             print("Program closed.")
             break
 
         else:
 
-            print("\nInvalid option. Choose a number from 0 to 9.")
+            print("\nInvalid option. Choose a number from 0 to 8.")
             pause()
 
 
+try:
+    df = pd.read_csv(DATASET_PATH)
+    cleaning(df)
+
+except FileNotFoundError:
+    print("Dataset not found.")
+    print(f"Expected path:\n{DATASET_PATH}")
