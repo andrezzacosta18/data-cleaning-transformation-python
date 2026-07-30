@@ -96,8 +96,14 @@ def analyze_missing_values(df):
         missing_summary["Missing Values"] > 0
     ]
 
+    if missing_columns.empty:
+        print("\nThere are no missing values in the dataset.")
+        return df
+
+    columns = list(missing_columns.index)
+    
     print("\nColumns with missing values:\n")
-    print(missing_columns)
+    print(columns)
 
     print("\nChoose a column to clean:\n")
 
@@ -109,8 +115,69 @@ def analyze_missing_values(df):
     print("6 - duration")
     print("0 - Return")
 
-    option = input("\nChoose an option: ")
+    column_option = int(input("\nChoose an option: "))
+    try:
+        column_option = int(input("\nChoose a column: "))
 
+    except ValueError:
+        print("\nInvalid option. Please enter a number.")
+        return df
+
+    if column_option == 0:
+        return df
+
+    if column_option < 1 or column_option > len(columns):
+        print("\nInvalid column option.")
+        return df
+    
+    missing_count = missing_summary.loc[
+            selected_column,
+            "Missing Values"
+        ]
+
+    missing_percent = missing_summary.loc[
+        selected_column,
+        "Missing Percentage (%)"
+    ]
+
+    print("\n" + "=" * 70)
+    print(f"COLUMN: {selected_column}")
+    print("=" * 70)
+
+    
+    print(f"\nThe column '{column_option}' has {missing_percentage:.2f}% missing values.")
+    selected_column = columns[column_option - 1]
+
+
+    print("\nWhat would you like to do?")
+
+    print("\n1 — Remove rows")
+    print("2 — Fill with a fixed value")
+    print("3 — Fill with the mean/median")
+    print("4 — Leave as it is")
+
+    action = int(input("\nChoose an option: "))
+
+    for index, column in enumerate(columns, start=1):
+
+        missing_count = missing_summary.loc[
+            column,
+            "Missing Values"
+        ]
+
+        missing_percent = missing_summary.loc[
+            column,
+            "Missing Percentage (%)"
+        ]
+
+        print(
+            f"{index} — {column} "
+            f"({missing_count} missing | {missing_percent:.2f}%)"
+        )
+
+    print("0 — Return")
+
+ 
 
 # ==========================================================
 # OPTION 3
