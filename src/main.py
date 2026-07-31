@@ -7,7 +7,8 @@ import pandas as pd
 # ==========================================================
 # PATHS
 # ==========================================================
-df = pd.read_csv("data/raw/netflix_titles.csv")
+RAW_PATH = Path("data/raw/netflix_titles_cleaned.csv")
+OUTPUT_PATH = Path("data/processed/netflix_titles_cleaned.csv")
 
 
 # ==========================================================
@@ -70,9 +71,11 @@ def display_dataset_info(df):
 # OPTION 2
 # ==========================================================
 
-def handle_missing_values(df):
+
+def handle_missing_values(df, cleaning_report):
 
     backup_df = df.copy()
+
     print("=" * 70)
     print("MISSING VALUES ANALYSIS")
     print("=" * 70)
@@ -156,10 +159,11 @@ def handle_missing_values(df):
 
     print("1 - Remove rows")
     print("2 - Fill with a fixed value")
-    print("3 - Leave as it is")
+    print("3 - Fill with the mean or median")
+    print("4 - Leave as it is")
     print("0 - Return")
 
-    valid_options = [0, 1, 2, 3]
+    valid_options = [0, 1, 2, 3, 4]
 
     while True:
 
@@ -174,7 +178,6 @@ def handle_missing_values(df):
         except ValueError:
             print("\nInvalid option. Please enter a number.")
 
-
     if action == 0:
         return df
 
@@ -182,27 +185,29 @@ def handle_missing_values(df):
 
         rows_before = len(df)
 
-        print(f"The dataset has {rows_before} rows and {missing_count} missing values.")
+        print(
+            f"The dataset has {rows_before} rows and "
+            f"{missing_count} missing values."
+        )
+
         confirm = input(
-        "\nAre you sure you want to remove these rows? (y/n): "
+            "\nAre you sure you want to remove these rows? (y/n): "
         ).lower()
 
         if confirm == "y":
-
             df = df.dropna(subset=[selected_column])
             print("\nRows removed successfully.")
-            return df
 
         else:
-
             print("\nOperation cancelled.")
-
 
     elif action == 2:
 
         fixed_value = input("\nEnter the value to use: ")
 
-        df[selected_column] = df[selected_column].fillna(fixed_value)
+        df.loc[:, selected_column] = (
+            df[selected_column].fillna(fixed_value)
+        )
 
         print(
             f"\nMissing values in '{selected_column}' "
@@ -211,22 +216,79 @@ def handle_missing_values(df):
 
     elif action == 3:
 
+        if df[selected_column].dtype in ["int64", "float64"]:
+
+            print("\nChoose a method:\n")
+
+            print("1 - Mean")
+            print("2 - Median")
+            print("0 - Return")
+
+            valid_options = [0, 1, 2]
+
+            while True:
+
+                try:
+                    method = int(input("\nChoose an option: "))
+
+                    if method in valid_options:
+                        break
+
+                    print(
+                        "\nInvalid option. "
+                        "Please choose a valid option."
+                    )
+
+                except ValueError:
+                    print("\nInvalid option. Please enter a number.")
+
+            if method == 0:
+                return df
+
+            if method == 1:
+
+                mean_value = df[selected_column].mean()
+
+                df.loc[:, selected_column] = (
+                    df[selected_column].fillna(mean_value)
+                )
+
+                print(
+                    f"\nMissing values in '{selected_column}' "
+                    f"were filled with the mean: {mean_value:.2f}."
+                )
+
+            elif method == 2:
+
+                median_value = df[selected_column].median()
+
+                df.loc[:, selected_column] = (
+                    df[selected_column].fillna(median_value)
+                )
+
+                print(
+                    f"\nMissing values in '{selected_column}' "
+                    f"were filled with the median: {median_value:.2f}."
+                )
+
+        else:
+            print("\nNon-numeric column, choose a different one!")
+
+    elif action == 4:
+
         print(
             f"\nThe column '{selected_column}' "
             f"was left unchanged."
         )
 
-    else:
-        print("\nInvalid option.")
-
     return df
-
 
 # ==========================================================
 # OPTION 3
 # ==========================================================
 
-def handle_duplicates(df):
+
+def handle_duplicates(df, cleaning_report):
 
     print("=" * 70)
     print("DUPLICATE ROWS ANALYSIS")
@@ -236,9 +298,14 @@ def handle_duplicates(df):
 
     if duplicated_rows == 0:
         print("\nThere are no duplicate rows in the dataset.")
-        return
+        return df
 
     print(f"\nNumber of duplicate rows: {duplicated_rows}")
+
+    duplicate_data = df[df.duplicated(keep=False)]
+
+    print("\nDuplicate rows:\n")
+    display(duplicate_data)
 
     print("\nWhat would you like to do?\n")
 
@@ -261,50 +328,81 @@ def handle_duplicates(df):
         except ValueError:
             print("\nInvalid option. Please enter a number.")
 
-        if action == 0:
-            return df
-        
+    if action == 0:
+        return df
+
     if action == 1:
-        duplicate_rows = df.duplicated().sum()
 
-        if duplicate_rows > 0:
-            duplicate_data = df[ 
-                df.duplicated()
-                ] 
-            display(duplicate_data)
+        confirm = input(
+            "\nAre you sure you want to remove duplicate rows? (y/n): "
+        ).lower()
+
+        if confirm == "y":
+            df = df.drop_duplicates()
+            print("\nDuplicate rows removed successfully.")
+
         else:
-            print("No duplicate rows found.")
+            print("\nOperation cancelled.")
 
-            print(df[df.duplicated(keep=False)])
+    elif action == 2:
+        print("\nDuplicate rows were left unchanged.")
 
-
+    return df
 
 # ==========================================================
 # OPTION 4
 # ==========================================================
-def standardize_text(df):
+
+def standardize_text(df, cleaning_report):
 
     print("=" * 70)
     print("STANDARDIZE TEXT COLUMNS")
     print("=" * 70)
 
     text_columns = list(
-    df.select_dtypes(
-        include=["object", "string"]
-    ).columns
-)
-    
+        df.select_dtypes(
+            include=["object", "string"]
+        ).columns
+    )
+
+    if len(text_columns) == 0:
+        print("\nThere are no text columns in the dataset.")
+        return df
+
+    print("\nText columns:\n")
+
+    for index, column in enumerate(text_columns, start=1):
+        print(f"{index} - {column}")
+
+    print("0 - Return")
+
+    try:
+        column_option = int(input("\nChoose a column: "))
+
+    except ValueError:
+        print("\nInvalid option. Please enter a number.")
+        return df
+
+    if column_option == 0:
+        return df
+
+    if column_option < 1 or column_option > len(text_columns):
+        print("\nInvalid column option.")
+        return df
+
+    selected_column = text_columns[column_option - 1]
+
+    print(f"\nSelected column: {selected_column}")
+
     print("\nChoose the standardization you want to apply:\n")
 
     print("1 - Convert to UPPERCASE")
     print("2 - Convert to lowercase")
-    print("3 - Convert to Title Case")
-    print("4 - Remove leading and trailing spaces")
-    print("5 - Remove extra spaces")
-    print("6 - Replace text")
+    print("3 - Remove extra spaces")
+    print("4 - Replace text")
     print("0 - Return")
 
-    valid_options = [0, 1, 2 ,3, 4, 5, 6]
+    valid_options = [0, 1, 2, 3, 4]
 
     while True:
 
@@ -319,13 +417,217 @@ def standardize_text(df):
         except ValueError:
             print("\nInvalid option. Please enter a number.")
 
+    if action == 0:
+        return df
 
+    if action == 1:
+
+        clear_screen()
+
+        df.loc[:, selected_column] = (
+            df[selected_column].str.upper()
+        )
+
+        print(
+            f"\nColumn '{selected_column}' "
+            "converted to uppercase."
+        )
+
+    elif action == 2:
+
+        clear_screen()
+
+        df.loc[:, selected_column] = (
+            df[selected_column].str.lower()
+        )
+
+        print(
+            f"\nColumn '{selected_column}' "
+            "converted to lowercase."
+        )
+
+    elif action == 3:
+
+        clear_screen()
+
+        df.loc[:, selected_column] = (
+            df[selected_column].str.strip()
+        )
+
+        print(
+            f"\nExtra spaces removed from "
+            f"'{selected_column}'."
+        )
+
+    elif action == 4:
+
+        clear_screen()
+
+        old_text = input(
+            "\nWhat text would you like to replace? "
+        )
+
+        new_text = input("Replace with: ")
+
+        df.loc[:, selected_column] = (
+            df[selected_column].str.replace(
+                old_text,
+                new_text,
+                regex=False
+            )
+        )
+
+        print(
+            f"\nText replaced successfully "
+            f"in '{selected_column}'."
+        )
+
+    return df
 
 # ==========================================================
 # OPTION 5
 # ==========================================================
 
+def clean_and_convert(df, cleaning_report):
 
+    print("\n" + "=" * 70)
+    print("AVAILABLE COLUMNS")
+    print("=" * 70)
+
+    for index, column in enumerate(df.columns, start=1):
+        print(f"{index} - {column}")
+
+    print("0 - Return")
+
+    try:
+        column_option = int(input("\nChoose a column: "))
+
+    except ValueError:
+        print("\nInvalid option. Please enter a number.")
+        return df
+
+    if column_option == 0:
+        return df
+
+    if column_option < 1 or column_option > len(df.columns):
+        print("\nInvalid column option.")
+        return df
+
+    selected_column = df.columns[column_option - 1]
+
+    print("\n" + "=" * 70)
+    print(f"COLUMN ANALYSIS: {selected_column}")
+    print("=" * 70)
+
+    print(f"\nData type: {df[selected_column].dtype}")
+    print(
+        f"Missing values: "
+        f"{df[selected_column].isnull().sum()}"
+    )
+    print(
+        f"Unique values: "
+        f"{df[selected_column].nunique()}"
+    )
+
+    print("\nSample values:")
+
+    print(
+        df[selected_column]
+        .dropna()
+        .head(10)
+    )
+
+    print("\nMost frequent values:")
+
+    print(
+        df[selected_column]
+        .value_counts(dropna=False)
+        .head(10)
+    )
+
+    print("\nChoose an operation:\n")
+
+    print("1 - Extract numbers from the column")
+    print("2 - Convert column to integer")
+    print("3 - Convert column to float")
+    print("0 - Return")
+
+    valid_options = [0, 1, 2, 3]
+
+    while True:
+
+        try:
+            action = int(input("\nChoose an option: "))
+
+            if action in valid_options:
+                break
+
+            print("\nInvalid option. Please choose a valid option.")
+
+        except ValueError:
+            print("\nInvalid option. Please enter a number.")
+
+    if action == 0:
+        return df
+
+    if action == 1:
+
+        if df[selected_column].dtype == "object":
+
+            df.loc[:, selected_column] = (
+                df[selected_column]
+                .str.extract(r"(\d+)", expand=False)
+            )
+
+            print(
+                f"\nNumbers extracted from "
+                f"'{selected_column}'."
+            )
+
+        else:
+
+            print(
+                "\nThe selected column is already numeric."
+            )
+
+    elif action == 2:
+
+        numeric_values = pd.to_numeric(
+            df[selected_column],
+            errors="coerce"
+        )
+
+        if numeric_values.isnull().any():
+
+            print(
+                "\nThe column contains values that could "
+                "not be converted to integer."
+            )
+
+        else:
+
+            df.loc[:, selected_column] = (
+                numeric_values.astype("int64")
+            )
+
+            print(
+                f"\nColumn '{selected_column}' "
+                "converted to integer."
+            )
+
+    elif action == 3:
+
+        df.loc[:, selected_column] = pd.to_numeric(
+            df[selected_column],
+            errors="coerce"
+        )
+
+        print(
+            f"\nColumn '{selected_column}' "
+            "converted to float."
+        )
+
+    return df
 
 # ==========================================================
 # OPTION 6
@@ -372,18 +674,30 @@ def display_cleaning_report(cleaning_report):
 
 def save_clean_dataset(df):
 
-  
     print("=" * 70)
     print("SAVE CLEANED DATASET")
     print("=" * 70)
 
-    print("\nDataset saved successfully!")
-    print(f"\nSaved to:\n{OUTPUT_PATH}")
+    try:
 
+        df.to_csv(
+            OUTPUT_PATH,
+            index=False,
+            encoding="utf-8"
+        )
+
+        print("\nDataset saved successfully!")
+        print(f"\nSaved to:\n{OUTPUT_PATH}")
+
+    except Exception as error:
+
+        print(f"\nError while saving the dataset:")
+        print(error)
 
 # ==========================================================
 # MAIN
 # ==========================================================
+
 
 def cleaning(df):
 
@@ -414,34 +728,37 @@ def cleaning(df):
         elif op == 2:
 
             clear_screen()
-            df = handle_missing_values(df)
+            backup_df = df.copy()
+            df = handle_missing_values(df, cleaning_report)
             pause()
 
         elif op == 3:
 
             clear_screen()
-            handle_duplicates(df)
+            backup_df = df.copy()
+            df = handle_duplicates(df, cleaning_report)
             pause()
 
         elif op == 4:
 
             clear_screen()
-            df = handle_duplicates(df)
+            backup_df = df.copy()
+            df = standardize_text(df, cleaning_report)
             pause()
 
         elif op == 5:
 
             clear_screen()
-            df = standardize_text(df)
+            backup_df = df.copy()
+            df = clean_and_convert(df, cleaning_report)
             pause()
 
         elif op == 6:
 
             clear_screen()
-            df = convert_numeric_columns(df)
+            display_cleaning_report(cleaning_report)
             pause()
 
-        
         elif op == 7:
 
             clear_screen()
@@ -460,9 +777,15 @@ def cleaning(df):
 
             if confirm == "y":
 
-                df = pd.read_csv("data/raw/netflix_titles.csv")
+                df = pd.read_csv(
+                    "data/raw/netflix_titles.csv"
+                )
 
-                print("\nOriginal dataset restored successfully.")
+                backup_df = df.copy()
+
+                print(
+                    "\nOriginal dataset restored successfully."
+                )
 
             else:
 
@@ -484,14 +807,20 @@ def cleaning(df):
 
         else:
 
-            print("\nInvalid option. Choose a number from 0 to 8.")
+            print(
+                "\nInvalid option. "
+                "Choose a number from 0 to 9."
+            )
             pause()
 
+if __name__ == "__main__":
 
-try:
-    df = pd.read_csv("data/raw/netflix_titles.csv")
-    cleaning(df)
+    try:
 
-except FileNotFoundError:
-    print("Dataset not found.")
-    print(f"Expected path:\n{"data/raw/netflix_titles.csv"}")
+        df = pd.read_csv(RAW_PATH)
+        cleaning(df)
+
+    except FileNotFoundError:
+
+        print("Dataset not found.")
+        print(f"Expected path:{RAW_PATH}")
