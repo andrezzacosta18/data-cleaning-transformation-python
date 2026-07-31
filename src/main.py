@@ -1,18 +1,13 @@
 import os
 from pathlib import Path
-
+from IPython.display import display 
 import pandas as pd
 
 
 # ==========================================================
 # PATHS
 # ==========================================================
-
-CURRENT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = CURRENT_DIR.parent
-
-DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "netflix_titles.csv"
-OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "netflix_titles_clean.csv"
+df = pd.read_csv("data/raw/netflix_titles.csv")
 
 
 # ==========================================================
@@ -42,13 +37,14 @@ def display_menu():
     print("You must review each problem and decide what action to take.")
 
     print("\n1 — View dataset information")
-    print("2 — Analyze missing values")
-    print("3 — Analyze duplicate rows")
-    print("4 — Handle duplicate rows")
-    print("5 — Standardize text columns")
-    print("6 — Clean and convert numeric columns")
-    print("7 — View cleaning report")
-    print("8 — Save cleaned dataset")
+    print("2 — Analyze and Handle missing values")
+    print("3 — Analyze and Handle duplicate rows")
+    print("4 — Standardize text columns")
+    print("5 — Clean and convert numeric columns")
+    print("6 — View cleaning report")
+    print("7 — Undo last operation")
+    print("8— Restore original dataset")
+    print("9 — Save cleaned dataset")
     print("0 — Exit")
 
     print("\n" + "=" * 70)
@@ -74,15 +70,12 @@ def display_dataset_info(df):
 # OPTION 2
 # ==========================================================
 
-def analyze_missing_values(df):
+def handle_missing_values(df):
 
+    backup_df = df.copy()
     print("=" * 70)
     print("MISSING VALUES ANALYSIS")
     print("=" * 70)
-
-    print("\nMissing Values by Column\n")
-
-    df.info()
 
     missing_values = df.isnull().sum()
     missing_percentage = df.isnull().mean() * 100
@@ -101,62 +94,8 @@ def analyze_missing_values(df):
         return df
 
     columns = list(missing_columns.index)
-    
+
     print("\nColumns with missing values:\n")
-    print(columns)
-
-    print("\nChoose a column to clean:\n")
-
-    print("1 - director")
-    print("2 - cast")
-    print("3 - country")
-    print("4 - date_added")
-    print("5 - rating")
-    print("6 - duration")
-    print("0 - Return")
-
-    column_option = int(input("\nChoose an option: "))
-    try:
-        column_option = int(input("\nChoose a column: "))
-
-    except ValueError:
-        print("\nInvalid option. Please enter a number.")
-        return df
-
-    if column_option == 0:
-        return df
-
-    if column_option < 1 or column_option > len(columns):
-        print("\nInvalid column option.")
-        return df
-    
-    missing_count = missing_summary.loc[
-            selected_column,
-            "Missing Values"
-        ]
-
-    missing_percent = missing_summary.loc[
-        selected_column,
-        "Missing Percentage (%)"
-    ]
-
-    print("\n" + "=" * 70)
-    print(f"COLUMN: {selected_column}")
-    print("=" * 70)
-
-    
-    print(f"\nThe column '{column_option}' has {missing_percentage:.2f}% missing values.")
-    selected_column = columns[column_option - 1]
-
-
-    print("\nWhat would you like to do?")
-
-    print("\n1 — Remove rows")
-    print("2 — Fill with a fixed value")
-    print("3 — Fill with the mean/median")
-    print("4 — Leave as it is")
-
-    action = int(input("\nChoose an option: "))
 
     for index, column in enumerate(columns, start=1):
 
@@ -171,55 +110,221 @@ def analyze_missing_values(df):
         ]
 
         print(
-            f"{index} — {column} "
+            f"{index} - {column} "
             f"({missing_count} missing | {missing_percent:.2f}%)"
         )
 
-    print("0 — Return")
+    print("0 - Return")
 
- 
+    try:
+        column_option = int(input("\nChoose a column: "))
 
-# ==========================================================
-# OPTION 3
-# ==========================================================
+    except ValueError:
+        print("\nInvalid option. Please enter a number.")
+        return df
 
-def analyze_duplicates(df):
+    if column_option == 0:
+        return df
 
+    if column_option < 1 or column_option > len(columns):
+        print("\nInvalid column option.")
+        return df
+
+    selected_column = columns[column_option - 1]
+
+    missing_count = missing_summary.loc[
+        selected_column,
+        "Missing Values"
+    ]
+
+    missing_percent = missing_summary.loc[
+        selected_column,
+        "Missing Percentage (%)"
+    ]
+
+    print("\n" + "=" * 70)
+    print(f"COLUMN: {selected_column}")
     print("=" * 70)
-    print("DUPLICATE ROWS ANALYSIS")
-    print("=" * 70)
 
-    print("\nThis option has not been implemented yet.")
+    print(
+        f"\nThe column '{selected_column}' has "
+        f"{missing_count} missing values "
+        f"({missing_percent:.2f}%)."
+    )
+
+    print("\nWhat would you like to do?\n")
+
+    print("1 - Remove rows")
+    print("2 - Fill with a fixed value")
+    print("3 - Leave as it is")
+    print("0 - Return")
+
+    valid_options = [0, 1, 2, 3]
+
+    while True:
+
+        try:
+            action = int(input("\nChoose an option: "))
+
+            if action in valid_options:
+                break
+
+            print("\nInvalid option. Please choose a valid option.")
+
+        except ValueError:
+            print("\nInvalid option. Please enter a number.")
 
 
-# ==========================================================
-# OPTION 4
-# ==========================================================
+    if action == 0:
+        return df
 
-def remove_duplicates(df):
+    if action == 1:
 
-    print("=" * 70)
-    print("HANDLE DUPLICATE ROWS")
-    print("=" * 70)
+        rows_before = len(df)
 
-    print("\nThis option has not been implemented yet.")
+        print(f"The dataset has {rows_before} rows and {missing_count} missing values.")
+        confirm = input(
+        "\nAre you sure you want to remove these rows? (y/n): "
+        ).lower()
+
+        if confirm == "y":
+
+            df = df.dropna(subset=[selected_column])
+            print("\nRows removed successfully.")
+            return df
+
+        else:
+
+            print("\nOperation cancelled.")
+
+
+    elif action == 2:
+
+        fixed_value = input("\nEnter the value to use: ")
+
+        df[selected_column] = df[selected_column].fillna(fixed_value)
+
+        print(
+            f"\nMissing values in '{selected_column}' "
+            f"were filled with '{fixed_value}'."
+        )
+
+    elif action == 3:
+
+        print(
+            f"\nThe column '{selected_column}' "
+            f"was left unchanged."
+        )
+
+    else:
+        print("\nInvalid option.")
 
     return df
 
 
 # ==========================================================
-# OPTION 5
+# OPTION 3
 # ==========================================================
 
+def handle_duplicates(df):
+
+    print("=" * 70)
+    print("DUPLICATE ROWS ANALYSIS")
+    print("=" * 70)
+
+    duplicated_rows = df.duplicated().sum()
+
+    if duplicated_rows == 0:
+        print("\nThere are no duplicate rows in the dataset.")
+        return
+
+    print(f"\nNumber of duplicate rows: {duplicated_rows}")
+
+    print("\nWhat would you like to do?\n")
+
+    print("1 - Remove duplicates")
+    print("2 - Leave as it is")
+    print("0 - Return")
+
+    valid_options = [0, 1, 2]
+
+    while True:
+
+        try:
+            action = int(input("\nChoose an option: "))
+
+            if action in valid_options:
+                break
+
+            print("\nInvalid option. Please choose a valid option.")
+
+        except ValueError:
+            print("\nInvalid option. Please enter a number.")
+
+        if action == 0:
+            return df
+        
+    if action == 1:
+        duplicate_rows = df.duplicated().sum()
+
+        if duplicate_rows > 0:
+            duplicate_data = df[ 
+                df.duplicated()
+                ] 
+            display(duplicate_data)
+        else:
+            print("No duplicate rows found.")
+
+            print(df[df.duplicated(keep=False)])
+
+
+
+# ==========================================================
+# OPTION 4
+# ==========================================================
 def standardize_text(df):
 
     print("=" * 70)
     print("STANDARDIZE TEXT COLUMNS")
     print("=" * 70)
 
-    print("\nThis option has not been implemented yet.")
+    text_columns = list(
+    df.select_dtypes(
+        include=["object", "string"]
+    ).columns
+)
+    
+    print("\nChoose the standardization you want to apply:\n")
 
-    return df
+    print("1 - Convert to UPPERCASE")
+    print("2 - Convert to lowercase")
+    print("3 - Convert to Title Case")
+    print("4 - Remove leading and trailing spaces")
+    print("5 - Remove extra spaces")
+    print("6 - Replace text")
+    print("0 - Return")
+
+    valid_options = [0, 1, 2 ,3, 4, 5, 6]
+
+    while True:
+
+        try:
+            action = int(input("\nChoose an option: "))
+
+            if action in valid_options:
+                break
+
+            print("\nInvalid option. Please choose a valid option.")
+
+        except ValueError:
+            print("\nInvalid option. Please enter a number.")
+
+
+
+# ==========================================================
+# OPTION 5
+# ==========================================================
+
 
 
 # ==========================================================
@@ -240,6 +345,8 @@ def convert_numeric_columns(df):
 # ==========================================================
 # OPTION 7
 # ==========================================================
+
+
 
 def display_cleaning_report(cleaning_report):
 
@@ -265,8 +372,7 @@ def display_cleaning_report(cleaning_report):
 
 def save_clean_dataset(df):
 
-    df.to_csv(OUTPUT_PATH, index=False)
-
+  
     print("=" * 70)
     print("SAVE CLEANED DATASET")
     print("=" * 70)
@@ -282,6 +388,8 @@ def save_clean_dataset(df):
 def cleaning(df):
 
     cleaning_report = []
+
+    backup_df = df.copy()
 
     while True:
 
@@ -306,19 +414,19 @@ def cleaning(df):
         elif op == 2:
 
             clear_screen()
-            analyze_missing_values(df)
+            df = handle_missing_values(df)
             pause()
 
         elif op == 3:
 
             clear_screen()
-            analyze_duplicates(df)
+            handle_duplicates(df)
             pause()
 
         elif op == 4:
 
             clear_screen()
-            df = remove_duplicates(df)
+            df = handle_duplicates(df)
             pause()
 
         elif op == 5:
@@ -333,13 +441,36 @@ def cleaning(df):
             df = convert_numeric_columns(df)
             pause()
 
+        
         elif op == 7:
 
             clear_screen()
-            display_cleaning_report(cleaning_report)
+            df = backup_df.copy()
+            print("\nLast operation undone successfully.")
             pause()
 
         elif op == 8:
+
+            clear_screen()
+
+            confirm = input(
+                "\nRestore the original dataset? "
+                "All unsaved changes will be lost. (y/n): "
+            ).lower()
+
+            if confirm == "y":
+
+                df = pd.read_csv("data/raw/netflix_titles.csv")
+
+                print("\nOriginal dataset restored successfully.")
+
+            else:
+
+                print("\nOperation cancelled.")
+
+            pause()
+
+        elif op == 9:
 
             clear_screen()
             save_clean_dataset(df)
@@ -358,9 +489,9 @@ def cleaning(df):
 
 
 try:
-    df = pd.read_csv(DATASET_PATH)
+    df = pd.read_csv("data/raw/netflix_titles.csv")
     cleaning(df)
 
 except FileNotFoundError:
     print("Dataset not found.")
-    print(f"Expected path:\n{DATASET_PATH}")
+    print(f"Expected path:\n{"data/raw/netflix_titles.csv"}")
