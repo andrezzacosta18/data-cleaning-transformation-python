@@ -7,8 +7,12 @@ import pandas as pd
 # ==========================================================
 # PATHS
 # ==========================================================
-RAW_PATH = Path("data/raw/netflix_titles_cleaned.csv")
-OUTPUT_PATH = Path("data/processed/netflix_titles_cleaned.csv")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+RAW_PATH = BASE_DIR / "data" / "raw" / "netflix_titles.csv"
+ORIGINAL_PATH = BASE_DIR / "data" / "raw" / "netflix_titles_original.csv"
+OUTPUT_PATH = BASE_DIR / "data" / "processed" / "netflix_titles_cleaned.csv"
 
 
 # ==========================================================
@@ -777,9 +781,7 @@ def cleaning(df):
 
             if confirm == "y":
 
-                df = pd.read_csv(
-                    "data/raw/netflix_titles.csv"
-                )
+                df = pd.read_csv(ORIGINAL_PATH)
 
                 backup_df = df.copy()
 
@@ -823,4 +825,4 @@ if __name__ == "__main__":
     except FileNotFoundError:
 
         print("Dataset not found.")
-        print(f"Expected path:{RAW_PATH}")
+        print(f"Expected path:\n{RAW_PATH}")
