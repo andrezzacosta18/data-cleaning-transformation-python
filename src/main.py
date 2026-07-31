@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from IPython.display import display 
 import pandas as pd
 
 
@@ -34,10 +33,10 @@ def pause():
 def display_menu():
 
     print("=" * 70)
-    print("        DATA CLEANING AND TRANSFORMATION SYSTEM")
+    print("        NETFLIX DATA MANAGEMENT SYSTEM")
     print("=" * 70)
 
-    print("\nWelcome to the Data Cleaning System!")
+    print("\nWelcome to the Data Management System!")
     print("No changes will be made automatically.")
     print("You must review each problem and decide what action to take.")
 
@@ -46,10 +45,15 @@ def display_menu():
     print("3 — Analyze and Handle duplicate rows")
     print("4 — Standardize text columns")
     print("5 — Clean and convert numeric columns")
-    print("6 — View cleaning report")
-    print("7 — Undo last operation")
-    print("8— Restore original dataset")
-    print("9 — Save cleaned dataset")
+    print("6 — Consult Catalog")
+    print("7 — Add New Movie")
+    print("8 — Edit Movie")
+    print("9 — Remove Movie")
+    print("10 — View report")
+    print("11 — Undo last operation")
+    print("12 — Restore original dataset")
+    print("13 — Save cleaned dataset")
+    print("14 — Save catalog changes")
     print("0 — Exit")
 
     print("\n" + "=" * 70)
@@ -77,8 +81,6 @@ def display_dataset_info(df):
 
 
 def handle_missing_values(df, cleaning_report):
-
-    backup_df = df.copy()
 
     print("=" * 70)
     print("MISSING VALUES ANALYSIS")
@@ -200,6 +202,9 @@ def handle_missing_values(df, cleaning_report):
 
         if confirm == "y":
             df = df.dropna(subset=[selected_column])
+            cleaning_report.append(
+                f"Removed rows with missing values from '{selected_column}'."
+            )
             print("\nRows removed successfully.")
 
         else:
@@ -209,13 +214,35 @@ def handle_missing_values(df, cleaning_report):
 
         fixed_value = input("\nEnter the value to use: ")
 
+        if df[selected_column].dtype in ["int64", "float64"]:
+
+            try:
+                if "." in fixed_value:
+                    fixed_value_cast = float(fixed_value)
+                else:
+                    fixed_value_cast = int(fixed_value)
+
+            except ValueError:
+                print(
+                    "\nThe value entered is not compatible with the "
+                    "column's numeric type. Operation cancelled."
+                )
+                return df
+
+        else:
+            fixed_value_cast = fixed_value
+
         df.loc[:, selected_column] = (
-            df[selected_column].fillna(fixed_value)
+            df[selected_column].fillna(fixed_value_cast)
         )
 
+        cleaning_report.append(
+            f"Filled missing values in '{selected_column}' "
+            f"with '{fixed_value_cast}'."
+        )
         print(
             f"\nMissing values in '{selected_column}' "
-            f"were filled with '{fixed_value}'."
+            f"were filled with '{fixed_value_cast}'."
         )
 
     elif action == 3:
@@ -257,6 +284,10 @@ def handle_missing_values(df, cleaning_report):
                     df[selected_column].fillna(mean_value)
                 )
 
+                cleaning_report.append(
+                    f"Filled missing values in '{selected_column}' "
+                    "using the mean."
+                )
                 print(
                     f"\nMissing values in '{selected_column}' "
                     f"were filled with the mean: {mean_value:.2f}."
@@ -270,6 +301,10 @@ def handle_missing_values(df, cleaning_report):
                     df[selected_column].fillna(median_value)
                 )
 
+                cleaning_report.append(
+                    f"Filled missing values in '{selected_column}' "
+                    "using the median."
+                )
                 print(
                     f"\nMissing values in '{selected_column}' "
                     f"were filled with the median: {median_value:.2f}."
@@ -309,7 +344,7 @@ def handle_duplicates(df, cleaning_report):
     duplicate_data = df[df.duplicated(keep=False)]
 
     print("\nDuplicate rows:\n")
-    display(duplicate_data)
+    print(duplicate_data.to_string())
 
     print("\nWhat would you like to do?\n")
 
@@ -343,6 +378,7 @@ def handle_duplicates(df, cleaning_report):
 
         if confirm == "y":
             df = df.drop_duplicates()
+            cleaning_report.append("Removed duplicate rows.")
             print("\nDuplicate rows removed successfully.")
 
         else:
@@ -432,6 +468,9 @@ def standardize_text(df, cleaning_report):
             df[selected_column].str.upper()
         )
 
+        cleaning_report.append(
+            f"Converted '{selected_column}' to uppercase."
+        )
         print(
             f"\nColumn '{selected_column}' "
             "converted to uppercase."
@@ -445,6 +484,9 @@ def standardize_text(df, cleaning_report):
             df[selected_column].str.lower()
         )
 
+        cleaning_report.append(
+            f"Converted '{selected_column}' to lowercase."
+        )
         print(
             f"\nColumn '{selected_column}' "
             "converted to lowercase."
@@ -458,6 +500,9 @@ def standardize_text(df, cleaning_report):
             df[selected_column].str.strip()
         )
 
+        cleaning_report.append(
+            f"Removed extra spaces from '{selected_column}'."
+        )
         print(
             f"\nExtra spaces removed from "
             f"'{selected_column}'."
@@ -473,14 +518,20 @@ def standardize_text(df, cleaning_report):
 
         new_text = input("Replace with: ")
 
+        was_na = df[selected_column].isnull()
+
         df.loc[:, selected_column] = (
-            df[selected_column].str.replace(
-                old_text,
-                new_text,
-                regex=False
-            )
+            df[selected_column]
+            .astype(str)
+            .str.replace(old_text, new_text, regex=False)
         )
 
+        df.loc[was_na, selected_column] = pd.NA
+
+        cleaning_report.append(
+            f"Replaced '{old_text}' with '{new_text}' "
+            f"in '{selected_column}'."
+        )
         print(
             f"\nText replaced successfully "
             f"in '{selected_column}'."
@@ -580,9 +631,12 @@ def clean_and_convert(df, cleaning_report):
 
             df.loc[:, selected_column] = (
                 df[selected_column]
-                .str.extract(r"(\d+)", expand=False)
+                .str.extract(r"(\d+(?:\.\d+)?)", expand=False)
             )
 
+            cleaning_report.append(
+                f"Extracted numbers from '{selected_column}'."
+            )
             print(
                 f"\nNumbers extracted from "
                 f"'{selected_column}'."
@@ -614,6 +668,9 @@ def clean_and_convert(df, cleaning_report):
                 numeric_values.astype("int64")
             )
 
+            cleaning_report.append(
+                f"Converted '{selected_column}' to integer."
+            )
             print(
                 f"\nColumn '{selected_column}' "
                 "converted to integer."
@@ -626,6 +683,9 @@ def clean_and_convert(df, cleaning_report):
             errors="coerce"
         )
 
+        cleaning_report.append(
+            f"Converted '{selected_column}' to float."
+        )
         print(
             f"\nColumn '{selected_column}' "
             "converted to float."
@@ -636,22 +696,6 @@ def clean_and_convert(df, cleaning_report):
 # ==========================================================
 # OPTION 6
 # ==========================================================
-
-def convert_numeric_columns(df):
-
-    print("=" * 70)
-    print("CLEAN AND CONVERT NUMERIC COLUMNS")
-    print("=" * 70)
-
-    print("\nThis option has not been implemented yet.")
-
-    return df
-
-
-# ==========================================================
-# OPTION 7
-# ==========================================================
-
 
 
 def display_cleaning_report(cleaning_report):
@@ -673,7 +717,7 @@ def display_cleaning_report(cleaning_report):
 
 
 # ==========================================================
-# OPTION 8
+# OPTION 9
 # ==========================================================
 
 def save_clean_dataset(df):
@@ -683,6 +727,8 @@ def save_clean_dataset(df):
     print("=" * 70)
 
     try:
+
+        OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         df.to_csv(
             OUTPUT_PATH,
@@ -703,11 +749,11 @@ def save_clean_dataset(df):
 # ==========================================================
 
 
-def cleaning(df):
+def run_program(df):
 
     cleaning_report = []
 
-    backup_df = df.copy()
+    undo_stack = [df.copy()]
 
     while True:
 
@@ -732,45 +778,82 @@ def cleaning(df):
         elif op == 2:
 
             clear_screen()
-            backup_df = df.copy()
+            undo_stack.append(df.copy())
             df = handle_missing_values(df, cleaning_report)
             pause()
 
         elif op == 3:
 
             clear_screen()
-            backup_df = df.copy()
+            undo_stack.append(df.copy())
             df = handle_duplicates(df, cleaning_report)
             pause()
 
         elif op == 4:
 
             clear_screen()
-            backup_df = df.copy()
+            undo_stack.append(df.copy())
             df = standardize_text(df, cleaning_report)
             pause()
 
         elif op == 5:
 
             clear_screen()
-            backup_df = df.copy()
+            undo_stack.append(df.copy())
             df = clean_and_convert(df, cleaning_report)
             pause()
 
         elif op == 6:
 
             clear_screen()
-            display_cleaning_report(cleaning_report)
-            pause()
+            consult_catalog(df)
 
         elif op == 7:
 
             clear_screen()
-            df = backup_df.copy()
-            print("\nLast operation undone successfully.")
+            undo_stack.append(df.copy())
+            df = add_row(df, cleaning_report)
             pause()
 
         elif op == 8:
+
+            clear_screen()
+            undo_stack.append(df.copy())
+            df = edit_cell(df, cleaning_report)
+            pause()
+
+        elif op == 9:
+
+            clear_screen()
+            undo_stack.append(df.copy())
+            df = remove_row(df, cleaning_report)
+            pause()
+
+        elif op == 10:
+
+            clear_screen()
+            display_cleaning_report(cleaning_report)
+            pause()
+
+        elif op == 11:
+
+            clear_screen()
+
+            if len(undo_stack) > 1:
+                undo_stack.pop()
+                df = undo_stack[-1].copy()
+
+                if len(cleaning_report) > 0:
+                    cleaning_report.pop()
+
+                print("\nLast operation undone successfully.")
+
+            else:
+                print("\nThere is nothing left to undo.")
+
+            pause()
+
+        elif op == 12:
 
             clear_screen()
 
@@ -781,13 +864,21 @@ def cleaning(df):
 
             if confirm == "y":
 
-                df = pd.read_csv(ORIGINAL_PATH)
+                try:
+                    df = pd.read_csv(ORIGINAL_PATH)
 
-                backup_df = df.copy()
+                    undo_stack = [df.copy()]
+                    cleaning_report.clear()
 
-                print(
-                    "\nOriginal dataset restored successfully."
-                )
+                    print(
+                        "\nOriginal dataset restored successfully."
+                    )
+
+                except FileNotFoundError:
+                    print(
+                        "\nOriginal dataset file not found at:"
+                        f"\n{ORIGINAL_PATH}"
+                    )
 
             else:
 
@@ -795,15 +886,31 @@ def cleaning(df):
 
             pause()
 
-        elif op == 9:
+        elif op == 13:
 
             clear_screen()
             save_clean_dataset(df)
             pause()
 
+        elif op == 14:
+
+            clear_screen()
+            save_catalog(df)
+            pause()
+
         elif op == 0:
 
             clear_screen()
+
+            if len(cleaning_report) > 0:
+
+                confirm = input(
+                    "You have unsaved changes. Exit anyway? (y/n): "
+                ).lower()
+
+                if confirm != "y":
+                    continue
+
             print("Program closed.")
             break
 
@@ -811,16 +918,299 @@ def cleaning(df):
 
             print(
                 "\nInvalid option. "
-                "Choose a number from 0 to 9."
+                "Choose a number from 0 to 14."
             )
             pause()
+
+# ==========================================================
+# MODULE 3 — MENU
+# ==========================================================
+
+def display_consult_menu():
+
+    print("=" * 70)
+    print("CATALOG CONSULTATION")
+    print("=" * 70)
+
+    print("\n1 — Search Movie")
+    print("2 — Consult Index")
+    print("3 — Consult Index and Column")
+    print("4 — Show Full Catalog")
+    print("0 — Return")
+
+    print("\n" + "=" * 70)
+
+
+# ==========================================================
+# MODULE 3 — OPTION 1: CONSULT
+# ==========================================================
+
+def search_title(df):
+
+    movie_name = input("\nEnter the movie name: ").strip().lower()
+
+    result = df[
+        df["title"].str.lower().str.contains(
+            movie_name,
+            case=False,
+            na=False
+        )
+    ]
+
+    if result.empty:
+        print("\nMovie not found.")
+
+    else:
+        print(f"\nMovies found: {result.shape[0]}")
+        print("=" * 70)
+        print(result.to_string())
+        print("=" * 70)
+
+
+def consult_index(df):
+
+    try:
+        row_index = int(input("\nEnter the index number: "))
+
+    except ValueError:
+        print("\nThe index must be an integer.")
+        return
+
+    if row_index in df.index:
+        print("\n" + df.loc[row_index].to_string())
+
+    else:
+        print("\nIndex not found.")
+
+
+def consult_index_column(df):
+
+    try:
+        row_index = int(input("\nEnter the desired row: "))
+
+    except ValueError:
+        print("\nThe index must be an integer.")
+        return
+
+    print("\n" + "=" * 70)
+    print("AVAILABLE COLUMNS")
+    print("=" * 70)
+    print(", ".join(df.columns))
+
+    column = input("\nEnter the desired column name: ").strip()
+
+    columns_map = {c.lower(): c for c in df.columns}
+
+    if column.lower() in columns_map:
+        column = columns_map[column.lower()]
+
+    if row_index not in df.index:
+        print("\nIndex not found.")
+        return
+
+    if column not in df.columns:
+        print("\nColumn not found.")
+        return
+
+    value = df.loc[row_index, column]
+
+    result = pd.DataFrame({
+        "ROW": [row_index],
+        "COLUMN": [column],
+        "VALUE": [value]
+    })
+
+    print("\nQuery result:\n")
+    print(result.to_string(index=False))
+
+
+def display_full_catalog(df):
+
+    print(f"\nFull table ({df.shape[0]} rows x {df.shape[1]} columns)")
+    print(df.to_string())
+
+
+def consult_catalog(df):
+
+    while True:
+
+        clear_screen()
+        display_consult_menu()
+
+        try:
+            option = int(input("Choose an option: "))
+
+        except ValueError:
+            print("\nInvalid option. Please enter a number.")
+            pause()
+            continue
+
+        if option == 1:
+            search_title(df)
+
+        elif option == 2:
+            consult_index(df)
+
+        elif option == 3:
+            consult_index_column(df)
+
+        elif option == 4:
+            display_full_catalog(df)
+
+        elif option == 0:
+            break
+
+        else:
+            print("\nInvalid option.")
+
+        pause()
+
+
+# ==========================================================
+# MODULE 3 — OPTION 2: ADD
+# ==========================================================
+
+def add_row(df, cleaning_report):
+
+    print("=" * 70)
+    print("ADD NEW MOVIE")
+    print("=" * 70)
+
+    new_row = {}
+
+    for column in df.columns:
+        new_row[column] = input(f"{column}: ")
+
+    df.loc[len(df)] = new_row
+
+    title = new_row.get("title", f"row {len(df) - 1}")
+
+    cleaning_report.append(f"Added new movie: '{title}'.")
+    print("\nMovie added successfully.")
+
+    return df
+
+
+# ==========================================================
+# MODULE 3 — OPTION 3: EDIT
+# ==========================================================
+
+def edit_cell(df, cleaning_report):
+
+    print("=" * 70)
+    print("EDIT MOVIE")
+    print("=" * 70)
+
+    try:
+        row_index = int(input("\nIndex: "))
+
+    except ValueError:
+        print("\nThe index must be an integer.")
+        return df
+
+    if row_index not in df.index:
+        print("\nIndex not found.")
+        return df
+
+    print("\nAVAILABLE COLUMNS")
+    print(", ".join(df.columns))
+
+    column = input("\nEnter the desired column name: ").strip()
+
+    columns_map = {c.lower(): c for c in df.columns}
+
+    if column.lower() in columns_map:
+        column = columns_map[column.lower()]
+
+    if column not in df.columns:
+        print("\nColumn not found.")
+        return df
+
+    new_value = input("Enter the new value: ")
+
+    df.loc[row_index, column] = new_value
+
+    cleaning_report.append(
+        f"Edited row {row_index}, column '{column}'."
+    )
+    print("\nValue updated successfully.")
+
+    return df
+
+
+# ==========================================================
+# MODULE 3 — OPTION 4: REMOVE
+# ==========================================================
+
+def remove_row(df, cleaning_report):
+
+    print("=" * 70)
+    print("REMOVE MOVIE")
+    print("=" * 70)
+
+    try:
+        row_index = int(input("\nRow to remove: "))
+
+    except ValueError:
+        print("\nThe index must be an integer.")
+        return df
+
+    if row_index not in df.index:
+        print("\nIndex not found.")
+        return df
+
+    confirm = input(
+        f"\nAre you sure you want to remove row {row_index}? (y/n): "
+    ).lower()
+
+    if confirm != "y":
+        print("\nOperation cancelled.")
+        return df
+
+    df = df.drop(row_index)
+    df.reset_index(drop=True, inplace=True)
+
+    cleaning_report.append(f"Removed row {row_index}.")
+    print("\nRow removed successfully.")
+
+    return df
+
+
+# ==========================================================
+# MODULE 3 — OPTION 5: SAVE
+# ==========================================================
+
+def save_catalog(df):
+
+    print("=" * 70)
+    print("SAVE CHANGES")
+    print("=" * 70)
+
+    try:
+
+        RAW_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        df.to_csv(
+            RAW_PATH,
+            index=False,
+            encoding="utf-8"
+        )
+
+        print("\nChanges saved successfully!")
+        print(f"\nSaved to:\n{RAW_PATH}")
+
+    except Exception as error:
+
+        print("\nError while saving the file:")
+        print(error)
+
 
 if __name__ == "__main__":
 
     try:
 
         df = pd.read_csv(RAW_PATH)
-        cleaning(df)
+        run_program(df)
 
     except FileNotFoundError:
 
